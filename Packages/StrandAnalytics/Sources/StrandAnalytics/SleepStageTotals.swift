@@ -240,6 +240,7 @@ public enum SleepStageTotals {
         let local = ts + offsetSec
         let secOfDay = ((local % secondsPerDay) + secondsPerDay) % secondsPerDay
         let hour = secOfDay / 3_600
+        if ShiftSchedule.current.containsHour(hour) { return true }
         return hour >= overnightStartHour || hour < overnightEndHour
     }
 
@@ -279,7 +280,7 @@ public enum SleepStageTotals {
     /// The target midsleep time-of-day (seconds) the scorer aligns to: the learned `habitualMidsleepSec`
     /// when supplied (a late/shift sleeper's real bedtime), else the cold-start overnight-band center.
     static func targetMidsleepSec(_ habitualMidsleepSec: Int?) -> Int {
-        habitualMidsleepSec ?? coldStartAnchorSec
+        habitualMidsleepSec ?? ShiftSchedule.current.centerSec ?? coldStartAnchorSec
     }
 
     // MARK: - Gap-bridging (biphasic / briefly-interrupted nights → one block)

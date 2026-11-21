@@ -1036,6 +1036,8 @@ public enum SleepStager {
         let local = center + tzOffsetSeconds
         let secOfDay = ((local % secondsPerDay) + secondsPerDay) % secondsPerDay
         let hour = secOfDay / 3_600
+        // Night-shift mode: a window centered in the user's main-sleep window is not a daytime nap.
+        if ShiftSchedule.current.containsHour(hour) { return false }
         return hour >= daytimeBandStartHour && hour < daytimeBandEndHour
     }
 
@@ -1046,6 +1048,7 @@ public enum SleepStager {
         let local = start + tzOffsetSeconds
         let secOfDay = ((local % secondsPerDay) + secondsPerDay) % secondsPerDay
         let hour = secOfDay / 3_600
+        if ShiftSchedule.current.containsHour(hour) { return true }
         return !(hour >= daytimeBandStartHour && hour < daytimeBandEndHour)
     }
 

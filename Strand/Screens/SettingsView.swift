@@ -123,6 +123,9 @@ struct SettingsView: View {
     @AppStorage(UnitPrefs.syncLiveActivityKey) private var syncLiveActivityEnabled = true
     @AppStorage(UnitPrefs.liftLiveActivityKey) private var liftLiveActivityEnabled = true
     @AppStorage(DayCycleMode.storageKey) private var dayCycleModeRaw = DayCycleMode.sleepOnset.rawValue
+    @AppStorage(ShiftSchedule.enabledKey) private var nightShiftEnabled = false
+    @AppStorage(ShiftSchedule.startHourKey) private var nightShiftStartHour = 5
+    @AppStorage(ShiftSchedule.endHourKey) private var nightShiftEndHour = 15
     // Alternate app icon (iOS only) — false = Titanium (primary AppIcon), true = Blue Titanium
     // ("AppIcon-Navy"). Display-only preference; the live switch goes through setAlternateIconName.
     @AppStorage("appIcon.alt") private var useNavyIcon = false
@@ -495,6 +498,24 @@ struct SettingsView: View {
                 Text(dayCycleModeRaw == DayCycleMode.midnight.rawValue
                      ? "Uses a conventional local calendar day from 00:00 to 00:00."
                      : "Default. Steps and in-progress Effort restart at the beginning of detected main sleep. Naps do not start a new day; missing sleep falls back to local midnight.")
+                    .font(StrandFont.footnote)
+                    .foregroundStyle(StrandPalette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                rowDivider
+                FormRow(label: "I work nights") {
+                    Toggle("I work nights", isOn: Binding(
+                        get: { nightShiftEnabled },
+                        set: { nightShiftEnabled = $0; rescoreForNightShift() }
+                    ))
+                    .labelsHidden()
+                }
+                if nightShiftEnabled {
+                    FormRow(label: "Main sleep from") { nightShiftHourPicker($nightShiftStartHour) }
+                    FormRow(label: "Main sleep until") { nightShiftHourPicker($nightShiftEndHour) }
+                }
+                Text(nightShiftEnabled
+                     ? "Sleep that starts or sits in this window counts as your main sleep, not a nap, even in daytime."
+                     : "Turn on if you usually sleep during the day after night shifts.")
                     .font(StrandFont.footnote)
                     .foregroundStyle(StrandPalette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -3470,5 +3491,25 @@ private extension Color {
         #endif
         return String(format: "#%02X%02X%02X",
                       Int((r * 255).rounded()), Int((g * 255).rounded()), Int((b * 255).rounded()))
+    }
+}
+
+
+// MARK: - Night-shift mode (personal fork)
+extension SettingsView {
+    fileprivate func rescoreForNightShift() {
+        ShiftSchedule.current = ShiftSchedule.load()
+        Task { await model.intelligence.analyzeRecent(); await model.repo.refresh() }
+    }
+
+    fileprivate func nightShiftHourPicker(_ hour: Binding<Int>) -> some View {
+        Picker("Hour", selection: Binding(
+            get: { hour.wrappedValue },
+            set: { hour.wrappedValue = $0; rescoreForNightShift() }
+        )) {
+            ForEach(0..<24, id: \.self) { h in Text(String(format: "%02d:00", h)).tag(h) }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
     }
 }
